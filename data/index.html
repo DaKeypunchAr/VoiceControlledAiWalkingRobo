@@ -1,0 +1,407 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ESP32 Motor Control</title>
+    <style>
+      :root {
+        --bg: #0f1720;
+        --card: #0b1220;
+        --accent: #06b6d4;
+        --muted: #9aa7b2;
+        --danger: #ff5c5c;
+        --glass: rgba(255, 255, 255, 0.03);
+        --radius: 14px;
+        --gap: 14px;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          "Helvetica Neue",
+          Arial;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: linear-gradient(180deg, #071017 0%, #081622 100%);
+        color: #e6eef2;
+      }
+      .wrap {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 28px;
+      }
+      .card {
+        width: 980px;
+        max-width: 96%;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.02),
+          rgba(255, 255, 255, 0.01)
+        );
+        border-radius: var(--radius);
+        padding: 22px;
+        box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: var(--gap);
+        align-items: start;
+      }
+      header h1 {
+        margin: 0 0 6px 0;
+        font-size: 20px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      /* Left: big control pad */
+      .pad {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        align-items: center;
+        justify-items: center;
+      }
+      .btn {
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        appearance: none;
+        border: 0;
+        outline: 0;
+        cursor: pointer;
+        width: 120px;
+        height: 58px;
+        border-radius: 10px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.03),
+          rgba(255, 255, 255, 0.01)
+        );
+        color: #e6f8fb;
+        font-weight: 700;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          transform 0.06s ease,
+          box-shadow 0.06s ease,
+          opacity 0.12s;
+        box-shadow:
+          0 6px 16px rgba(2, 6, 23, 0.5),
+          inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+      }
+      .btn:active {
+        transform: translateY(2px) scale(0.995);
+      }
+      .btn.primary {
+        background: linear-gradient(
+          180deg,
+          rgba(6, 182, 212, 0.18),
+          rgba(6, 182, 212, 0.12)
+        );
+        color: var(--accent);
+        box-shadow: 0 10px 30px rgba(6, 182, 212, 0.06);
+      }
+      .btn.stop {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 92, 92, 0.14),
+          rgba(255, 92, 92, 0.08)
+        );
+        color: var(--danger);
+      }
+      .btn.secondary {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.02),
+          rgba(255, 255, 255, 0.01)
+        );
+        color: var(--muted);
+      }
+
+      /* layout of the 3x3 pad: keep center empty for aesthetics */
+      .controls > .spacer {
+        width: 120px;
+        height: 58px;
+        background: transparent;
+        box-shadow: none;
+        pointer-events: none;
+      }
+
+      /* Right: status & speed */
+      .side {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .status {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--muted);
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: linear-gradient(180deg, #2ee6d6, #06b6d4);
+        box-shadow: 0 6px 14px rgba(6, 182, 212, 0.12);
+      }
+      .ip {
+        font-weight: 700;
+        color: #dff7fb;
+        font-size: 13px;
+      }
+      .info {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .speedBox {
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      label {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      input[type="range"] {
+        width: 100%;
+        -webkit-appearance: none;
+        height: 8px;
+        border-radius: 6px;
+        background: linear-gradient(90deg, #064e59, #06b6d4);
+        outline: none;
+      }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* footer small help */
+      .footer {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+
+      @media (max-width: 860px) {
+        .card {
+          grid-template-columns: 1fr;
+        }
+        .side {
+          order: 2;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card" role="application" aria-label="ESP32 Motor Control UI">
+        <div>
+          <header>
+            <h1>ESP32 Motor Control</h1>
+            <p>
+              Control the motors from your browser. Connect to the board's Wi-Fi
+              and open <span id="ipDisplay">192.168.4.1</span>
+            </p>
+          </header>
+
+          <div class="pad" aria-hidden="false">
+            <div class="controls" role="group" aria-label="motor controls">
+              <button id="btnForward" class="btn primary" aria-label="Forward">
+                Forward
+              </button>
+              <div class="spacer"></div>
+              <button id="btnLeft" class="btn secondary" aria-label="Left">
+                Left
+              </button>
+
+              <button id="btnStop" class="btn stop" aria-label="Stop">
+                STOP
+              </button>
+              <div class="spacer"></div>
+              <button id="btnRight" class="btn secondary" aria-label="Right">
+                Right
+              </button>
+
+              <div class="spacer"></div>
+              <div class="spacer"></div>
+              <button
+                id="btnBackward"
+                class="btn primary"
+                aria-label="Backward"
+              >
+                Backward
+              </button>
+            </div>
+
+            <div class="footer">
+              <span class="small"
+                >Tip: Buttons send simple GET requests to the ESP32 routes:
+                /forward /backward /left /right /stop</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <aside class="side" aria-label="status and options">
+          <div class="status">
+            <div style="display: flex; gap: 10px; align-items: center">
+              <div class="dot" id="connDot" title="Connected"></div>
+              <div>
+                <div class="ip" id="ip">192.168.4.1</div>
+                <div class="info" id="ssidInfo">Mode: Access Point</div>
+              </div>
+            </div>
+            <div id="resp" class="info">Ready</div>
+          </div>
+
+          <div class="speedBox">
+            <label for="speed"
+              >Motor speed <span id="speedLabel">255</span> (0-255)</label
+            >
+            <input id="speed" type="range" min="0" max="255" value="255" />
+            <div class="small">
+              This slider adjusts the `speed` query parameter sent to the ESP32
+              (if supported).
+            </div>
+          </div>
+
+          <div style="padding: 6px 0">
+            <button id="reconnect" class="btn secondary" style="width: 100%">
+              Refresh Status
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const ipDisplay = document.getElementById("ip");
+        const ipFallback = "192.168.4.1";
+        // Try to determine host automatically (will be the same origin if served by ESP)
+        const origin =
+          location && location.origin
+            ? location.origin
+            : "http://" + ipFallback;
+
+        // UI elements
+        const resp = document.getElementById("resp");
+        const speedInput = document.getElementById("speed");
+        const speedLabel = document.getElementById("speedLabel");
+        const connDot = document.getElementById("connDot");
+        const ssidInfo = document.getElementById("ssidInfo");
+
+        // set IP text
+        ipDisplay.textContent = location.hostname || ipFallback;
+        ipDisplay.title = origin;
+
+        function setStatus(text, color) {
+          resp.textContent = text;
+          if (color) connDot.style.background = color;
+        }
+
+        function handleFetch(path) {
+          const s = speedInput.value;
+          setStatus("Sending `" + path + "` …");
+          // include ?speed= if needed
+          const url = origin + path + "?speed=" + encodeURIComponent(s);
+          // Use fetch with a small timeout pattern
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 4000);
+
+          fetch(url, { method: "GET", signal: controller.signal })
+            .then((res) => res.text())
+            .then((txt) => {
+              clearTimeout(timeout);
+              setStatus(txt || "OK");
+            })
+            .catch((err) => {
+              clearTimeout(timeout);
+              if (err.name === "AbortError") setStatus("Request timed out");
+              else setStatus("Error: " + (err.message || err));
+            });
+        }
+
+        // Buttons
+        document
+          .getElementById("btnForward")
+          .addEventListener("click", () => handleFetch("/forward"));
+        document
+          .getElementById("btnBackward")
+          .addEventListener("click", () => handleFetch("/backward"));
+        document
+          .getElementById("btnLeft")
+          .addEventListener("click", () => handleFetch("/left"));
+        document
+          .getElementById("btnRight")
+          .addEventListener("click", () => handleFetch("/right"));
+        document
+          .getElementById("btnStop")
+          .addEventListener("click", () => handleFetch("/stop"));
+
+        // speed UI
+        speedInput.addEventListener("input", () => {
+          speedLabel.textContent = speedInput.value;
+        });
+
+        // Refresh status (just pings root)
+        document.getElementById("reconnect").addEventListener("click", () => {
+          setStatus("Checking...");
+          fetch(origin + "/status")
+            .then((r) => r.text())
+            .then((t) => setStatus(t || "OK"))
+            .catch((e) => setStatus("No response"));
+        });
+
+        // initial status check
+        setTimeout(() => {
+          fetch(origin + "/status")
+            .then((r) => r.text())
+            .then((t) => {
+              setStatus(t || "Ready");
+              connDot.style.filter = "none";
+            })
+            .catch((e) => {
+              setStatus("Not reachable");
+              connDot.style.background = "#666";
+            });
+        }, 200);
+      })();
+    </script>
+  </body>
+</html>
