@@ -1,0 +1,42 @@
+# Global config to suppress PlatformIO-specific errors
+CompileFlags:
+  Remove:
+    - -fno-tree-switch-conversion
+    - -free
+    - -fipa-pta
+    - -mtext-section-literals
+    - -mlongcalls
+    - -mlong-calls
+    - -fstrict-volatile-bitfields
+    - -march=*
+    - -mabi=*
+    - -mcpu=*
+
+  Add:
+    - -Wno-unknown-warning-option
+    - -DSSIZE_MAX
+    - -DLWIP_NO_UNISTD_H=1
+    - -Dssize_t=long
+    - -D_SSIZE_T_DECLARED
+
+Diagnostics:
+  Suppress:
+    - pp_including_mainfile_in_preamble
+    - invalid_width_spec # <-- ADD THIS LINE
+    - unknown_warning_option
+
+---
+# Per-path rules (match PlatformIO packages and your project)
+If:
+  PathMatch: [~\\.platformio, .pio, .*esp32.*, .*esp8266.*, .*hardware/.*]
+CompileFlags:
+  Add:
+    - -mlong-calls
+    - -ferror-limit=0
+  Remove:
+    - -fno-tree-switch-conversion
+    - -mtext-section-literals
+    - -mlongcalls
+    - -fstrict-volatile-bitfields
+    - -free
+    - -fipa-pta
